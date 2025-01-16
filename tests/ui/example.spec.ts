@@ -1,18 +1,63 @@
 import { test, expect } from '@playwright/test';
+import { LoginPage } from './pageObjects/LoginPage';
+import { InventoryPage } from './pageObjects/InventoryPage';
+import { CartPage } from './pageObjects/CartPage';
 
-test('has title', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
+const appUrl = 'https://www.saucedemo.com/';
+const validUsername = 'standard_user';
+const validPassword = 'secret_sauce';
 
-  // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Playwright/);
-});
+test.describe('SauceDemo Tests', () => {
+  test('Test Case 1: Verify User Login', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto(appUrl);
+    await loginPage.login(validUsername, validPassword);
+    const appLogo = await page.textContent('.app_logo');
+    expect(appLogo).toBe('Swag Labs');
+  });
 
-test('get started link', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
+  test('Test Case 2: Verify Adding Item to Cart', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
 
-  // Click the get started link.
-  await page.getByRole('link', { name: 'Get started' }).click();
+    await loginPage.goto(appUrl);
+    await loginPage.login(validUsername, validPassword);
+    await inventoryPage.addItem('sauce-labs-backpack');
+    expect(await inventoryPage.getCartCount()).toBe('1');
+    await inventoryPage.openCart();
+    expect(await cartPage.getItemCount()).toBe(1);
+  });
 
-  // Expects page to have a heading with the name of Installation.
-  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+  test('Test Case 4: Verify Removing Item from Cart', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+
+    await loginPage.goto(appUrl);
+    await loginPage.login(validUsername, validPassword);
+    await inventoryPage.addItem('sauce-labs-backpack');
+    await inventoryPage.openCart();
+    expect(await cartPage.getItemCount()).toBe(1);
+    await cartPage.removeItem('sauce-labs-backpack');
+    expect(await cartPage.getItemCount()).toBe(0);
+  });
+
+  test('Test Case 5: Verify Checkout Process', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+
+    await loginPage.goto(appUrl);
+    await loginPage.login(validUsername, validPassword);
+    await inventoryPage.addItem('sauce-labs-backpack');
+    await inventoryPage.openCart();
+    expect(await cartPage.getItemCount()).toBe(1);
+    await cartPage.checkout('John', 'Dou', '12345');
+    const summaryTotal = await page.textContent('.summary_total_label');
+    expect(summaryTotal).toBe('Total: $32.39');
+    await page.click('button[data-test="finish"]');
+    const completeHeader = await page.textContent('.complete-header');
+    expect(completeHeader).toBe('Thank you for your order!');
+  });
 });
